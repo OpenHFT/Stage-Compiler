@@ -1,0 +1,109 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+repositories {
+	mavenCentral()
+	mavenLocal()
+}
+
+dependencies {
+	compile group: 'net.openhft', name: 'spoon-core', version: '4.3.0'
+	compile 'it.unimi.dsi:fastutil:7.0.6'
+	compile files("${System.properties['java.home']}/../lib/tools.jar")
+	testCompile group: 'junit', name: 'junit', version: '4.+'
+}
+
+test {
+	testLogging.showStandardStreams = true
+}
+
+group = 'net.openhft'
+version = '1.0'
+jar.baseName = 'stage-compiler'
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar) {
+    classifier 'javadoc'
+    from javadoc
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+ext {
+    if (!project.hasProperty('sonatypeUrl'))
+        sonatypeUrl = 'https://oss.sonatype.org/service/local/staging/deploy/maven2'
+    if (!project.hasProperty('sonatypeUsername')) sonatypeUsername = ''
+    if (!project.hasProperty('sonatypePassword')) sonatypePassword = ''
+}
+
+ext.isReleaseVersion = !version.endsWith('SNAPSHOT')
+
+signing {
+    required { isReleaseVersion && gradle.taskGraph.hasTask('uploadArchives') }
+    sign configurations.archives
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: sonatypeUrl) {
+                authentication(userName: sonatypeUsername, password: sonatypePassword)
+            }
+        }
+    }
+}
+
+def installer = install.repositories.mavenInstaller
+def deployer = uploadArchives.repositories.mavenDeployer
+
+project.ext.poms = [installer, deployer]*.pom
+poms*.whenConfigured { pom ->
+    pom.dependencies.removeAll { dep -> dep.scope == 'test' }
+    pom.project {
+        name = 'Stage Compiler'
+        description = 'Annotation processor merging classes and managing lazy initialization'
+        url = 'https://github.com/OpenHFT/Stage-Compiler'
+        inceptionYear = '2015'
+        organization {
+            name = 'Higher Frequency Trading'
+            url = 'http://openhft.net'
+        }
+        licenses {
+            license {
+                name = 'The Apache Software License, Version 2.0'
+                url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                distribution = 'repo'
+            }
+        }
+        scm {
+            url = 'https://github.com/OpenHFT/Stage-Compiler'
+            connection = 'scm:git:git://github.com/OpenHFT/Stage-Compiler'
+            developerConnection = 'scm:git:git://github.com/OpenHFT/Stage-Compiler'
+        }
+        developers {
+            developer {
+                id = 'leventov'
+                name = 'Roman Leventov'
+                email = 'leventov@ya.ru'
+                url = 'http://www.leventov.ru'
+                organization = 'Higher Frequency Trading'
+                organizationUrl = 'http://openhft.net'
+                timezone = '+4'
+            }
+        }
+        issueManagement {
+            system = 'GitHub'
+            url = 'https://github.com/OpenHFT/Stage-Compiler/issues'
+        }
+    }
+}
