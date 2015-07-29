@@ -19,17 +19,20 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
-import javax.swing.tree.TreePath;
 import javax.tools.JavaFileObject;
-import java.io.*;
+import java.io.IOException;
+import java.io.Writer;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 
@@ -77,8 +80,9 @@ public class ContextProcessor extends AbstractProcessor {
                 String path = Paths.get(p.getCompilationUnit().getSourceFile().toUri())
                         .toAbsolutePath().toString();
                 String[] parts = path.split("java");
-                assert parts.length == 2;
-                return parts[0] + "java";
+                assert parts.length >= 2;
+                return Arrays.asList(parts).subList(0, parts.length - 1).stream()
+                        .collect(joining("java", "", "java"));
             }).distinct().forEach(spoon::addInputResource);
             spoon.buildModel();
 
