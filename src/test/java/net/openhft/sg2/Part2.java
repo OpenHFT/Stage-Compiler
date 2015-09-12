@@ -9,7 +9,7 @@ public class Part2 {
     
     int x = 0;
     
-    void initXSuffix() {
+    void initX_Suffix() {
         x = p1.a + 1;
         p1.privateFooMethod();
     }

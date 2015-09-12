@@ -53,7 +53,8 @@ public class StageModel extends DependencyNode {
                     cxt.bindStageInit(stageInitMethod, this);
 
                 } else if (!method.hasModifier(ABSTRACT) &&
-                        methodName.startsWith(initStageMethodPrefix())) {
+                        (methodName.equals(initStageMethodPrefix()) ||
+                                methodName.startsWith(initStageMethodPrefix() + "_"))) {
                     if (initStageMethods.stream().anyMatch(m -> clashes(method, m)))
                         throw sgce(methodName + "() methods clash");
                     //noinspection unchecked

@@ -12,7 +12,7 @@ public class PartSub extends PartSup {
         System.out.println(sub + "sub");
     }
 
-    void initFlagUsing() {
+    void initFlag_Using() {
         flag = p2.x != 0;
     }
     
