@@ -25,6 +25,7 @@ import static spoon.reflect.declaration.ModifierKind.ABSTRACT;
 
 public class StageModel extends DependencyNode {
     private final Map<CtField<?>, CtMethod<?>> fields = new LinkedHashMap<>();
+    private final Set<CtField<?>> fieldsToGenerateAccessMethods = new HashSet<>();
     private CtMethod<Boolean> stageInitMethod;
     private CtField<?> initField;
     private List<CtMethod<Void>> initStageMethods = new ArrayList<>();
@@ -95,6 +96,23 @@ public class StageModel extends DependencyNode {
                         initField = field;
                     }
                     cxt.bind(field, this);
+                    for (CtMethod<?> method : baseType.getMethods()) {
+                        if (method.getSimpleName().equals(field.getSimpleName()) &&
+                                method.hasModifier(ABSTRACT)) {
+                            fields.put(field, method);
+                            fieldsToGenerateAccessMethods.add(field);
+                        }
+                    }
+                    baseType.getSuperInterfaces().stream().flatMap(i -> {
+                        if (i.getDeclaration() != null) {
+                            return i.getDeclaration().getAllMethods().stream();
+                        } else {
+                            return Stream.empty();
+                        }
+                    }).forEach(m -> {
+                        if (m.getSimpleName().equals(field.getSimpleName()))
+                            fieldsToGenerateAccessMethods.add(field);
+                    });
                 }
             }
             fieldsFound = fieldsFoundInThisClass;
@@ -197,17 +215,28 @@ public class StageModel extends DependencyNode {
             CtExpression<?> target, CtField<T> field) {
         if (!fields.containsKey(field))
             throw new StageGraphCompilationException(field + " doesn't belong to " + this);
+        return f().Code().createInvocation(target,fieldAccess(field).getReference());
+    }
+
+    private <T> CtMethod<T> fieldAccess(CtField<T> field) {
         @SuppressWarnings("unchecked")
         Map<CtField<T>, CtMethod<T>> fields = (Map<CtField<T>, CtMethod<T>>) (Map) this.fields;
-        return f().Code().createInvocation(target, fields.computeIfAbsent(field, f -> {
-            CtMethod<T> proxy = createSimpleMethod(f.getType(), f.getSimpleName());
+        return fields.compute(field, (f, proxy) -> {
+            if (proxy == null) {
+                proxy = createSimpleMethod(f.getType(), f.getSimpleName());
+            } else if (proxy.hasModifier(ABSTRACT)) {
+                proxy.setBody(f().Core().createBlock());
+                proxy.removeModifier(ABSTRACT);
+            } else {
+                return proxy;
+            }
             addGuardingPrologue(proxy);
             CtReturn<T> ret = f().Core().createReturn();
             ret.setReturnedExpression(f().Code().createVariableRead(f.getReference(), false));
             proxy.getBody().addStatement(ret);
             cxt.bindAccessMethod(proxy, StageModel.this);
             return proxy;
-        }).getReference());
+        });
     }
 
     private <T> void addGuardingPrologue(CtMethod<T> proxy) {
@@ -285,6 +314,7 @@ public class StageModel extends DependencyNode {
         CtIf ctIf = createNotInitIf();
         ctIf.setThenStatement(f().Core().createReturn());
         closeMethodBody.insertBegin(ctIf);
+        fieldsToGenerateAccessMethods.forEach(this::fieldAccess);
     }
 
     private void insertCloseDependantsCall(Consumer<CtInvocation<?>> insert) {

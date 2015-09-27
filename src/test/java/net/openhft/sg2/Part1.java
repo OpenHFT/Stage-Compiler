@@ -1,10 +1,13 @@
 package net.openhft.sg2;
 
 import net.openhft.sg.Stage;
+import net.openhft.sg.StageRef;
 import net.openhft.sg.Staged;
 
 @Staged
 public class Part1 {
+
+    @StageRef PartSup ps;
     
     int a = -1;
     

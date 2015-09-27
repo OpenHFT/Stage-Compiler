@@ -87,7 +87,7 @@ public class CompilationNode {
             rootAccessPath = emptyList();
         } else {
             if (parentAccessField == null)
-                throw sgce("Parent compilation node is not referenced");
+                throw sgce("Parent compilation node is not referenced: " + classesToMerge);
             rootAccessPath = new ArrayList<>(parent.rootAccessPath);
             rootAccessPath.add(parentAccessField);
         }
