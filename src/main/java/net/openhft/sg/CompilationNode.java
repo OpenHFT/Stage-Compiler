@@ -103,8 +103,8 @@ public class CompilationNode {
         }
         return target.rootAccessPath.subList(equalUntil,target.rootAccessPath.size());
     }
-    
-    CtExpression<?> access(CompilationNode target) {
+
+    CtExpression<?> access(CompilationNode target, AccessType accessType) {
         List<CtField<?>> accessPath = accessPath(target);
         CompilationNode thisNodeToAccess = this;
         while (!target.rootAccessPath.subList(0,
@@ -112,7 +112,7 @@ public class CompilationNode {
                 .equals(thisNodeToAccess.rootAccessPath)) {
             thisNodeToAccess = thisNodeToAccess.parent;
         }
-        CtFieldAccess<?> access = FieldAccessChains.chainToAccess(accessPath);
+        CtFieldAccess<?> access = FieldAccessChains.chainToAccess(accessPath, accessType);
         CtClass<?> classToMerge = thisNodeToAccess.classesToMerge.get(0);
         CtThisAccess<?> thisAccess = f.Code().createThisAccess(classToMerge.getReference());
 //        thisAccess.setImplicit(false);

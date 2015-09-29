@@ -113,7 +113,8 @@ public abstract class DependencyNode {
             if (dependantCloseMethod.isPresent()) {
                 net.openhft.sg.CompilationNode dependantNode = cxt.getCompilationNode(dependant.declaringType);
                 net.openhft.sg.CompilationNode thisNode = cxt.getCompilationNode(declaringType);
-                CtExpression<?> dependantAccess = thisNode.access(dependantNode);
+                CtExpression<?> dependantAccess =
+                        thisNode.access(dependantNode, AccessType.Read);
                 closeDependantsMethod.getBody().addStatement(f().Code().createInvocation(
                         dependantAccess, dependantCloseMethod.get().getReference()));
             }

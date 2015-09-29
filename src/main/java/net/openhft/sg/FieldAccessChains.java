@@ -2,7 +2,7 @@ package net.openhft.sg;
 
 import spoon.reflect.code.CtFieldAccess;
 import spoon.reflect.declaration.CtField;
-import spoon.reflect.factory.Factory;
+import spoon.reflect.factory.CoreFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,11 +21,13 @@ final class FieldAccessChains {
     }
     
     @SuppressWarnings("unchecked")
-    public static CtFieldAccess<?> chainToAccess(List<CtField<?>> chain) {
+    public static CtFieldAccess<?> chainToAccess(List<CtField<?>> chain, AccessType accessType) {
         CtFieldAccess<?> access = null;
         for (int i = chain.size() - 1; i >= 0; i--) {
             CtField<?> field = chain.get(i);
-            CtFieldAccess acc = field.getFactory().Core().createFieldAccess();
+            CoreFactory coreFactory = field.getFactory().Core();
+            CtFieldAccess acc = accessType == AccessType.Read ? coreFactory.createFieldRead() :
+                    coreFactory.createFieldWrite();
             acc.setVariable(field.getReference());
             acc.setType(field.getType());
             acc.setTarget(access);

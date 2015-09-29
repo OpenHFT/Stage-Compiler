@@ -243,7 +243,7 @@ public class Compiler {
         cxt.allNodes().forEach(node -> {
             List<CtFieldAccess<?>> fieldAccesses =
                     node.filterBlocksForBuildingDeps((CtFieldAccess<?> fa) -> true);
-            fieldAccesses.forEach(fa -> {
+            fieldAccesses.forEach((CtFieldAccess fa) -> {
                 CtField<?> field = fa.getVariable().getDeclaration();
                 if (field != null) {
                     StageModel stage = cxt.getStageModel(field);
@@ -308,14 +308,16 @@ public class Compiler {
                     CtClass<?> baseC = p.b;
                     return baseC.getElements((CtFieldAccess<?> fieldAccess) -> {
                         CtField<?> field = fieldAccess.getVariable().getDeclaration();
-                        return field != null && field.getAnnotation(StageRef.class) != null;
+                        return field != null && field.getAnnotation(StageRef.class) != null &&
+                                (fieldAccess instanceof CtFieldRead ||
+                                        fieldAccess instanceof CtFieldWrite);
                     }).stream().map(fa -> new Pair<CtClass<?>, CtFieldAccess<?>>(ctC, fa));
                 })
                 .collect(toList());
 
         stageRefAccesses.forEach(p -> {
             CtClass<?> classWhereAccessFound = p.a;
-            CtFieldAccess<?> stageRefAccess = p.b;
+            CtFieldAccess stageRefAccess = p.b;
             CtField<?> field = stageRefAccess.getVariable().getDeclaration();
             assert field != null;
             CompilationNode referencingNode =
@@ -323,7 +325,9 @@ public class Compiler {
             CompilationNode referencedNode =
                     cxt.getCompilationNode(cxt.getReferencedClass(field));
             CtElement parent = stageRefAccess.getParent();
-            CtExpression<?> access = referencingNode.access(referencedNode);
+            CtExpression<?> access = referencingNode.access(referencedNode,
+                    stageRefAccess instanceof CtFieldRead ? AccessType.Read :
+                            AccessType.Write);
             if (access == null &&
                     (!(parent instanceof CtTargetedExpression) ||
                             stageRefAccess != ((CtTargetedExpression) parent).getTarget())) {
@@ -395,7 +399,7 @@ public class Compiler {
                 .forEach(e -> visitField(e.getKey(), visited, sorted, dependants));
         List<CtField<?>> sortedList = new ArrayList<>(sorted);
         int order = 0;
-        for (CtField<?> field : sortedList) {
+        for (CtField field : sortedList) {
             CtExpression fieldInit = field.getDefaultExpression();
             if (fieldInit != null && !field.hasModifier(STATIC)) {
                 CtType<?> declaringType = field.getDeclaringType();
@@ -552,13 +556,13 @@ public class Compiler {
             if (n.getDependencies().isEmpty()) {
                 n.getCloseMethod().ifPresent(closeMethod -> {
                     CompilationNode refNode = cxt.getCompilationNode(n.declaringType);
-                    CtExpression<?> access = root.access(refNode);
+                    CtExpression<?> access = root.access(refNode, AccessType.Read);
                     closeBody.addStatement(
                             f.Code().createInvocation(access, closeMethod.getReference()));
                 });
             }
         });
-        CtClass<?> rootClass = root.classesToMerge.get(0);
+        CtClass rootClass = root.classesToMerge.get(0);
         rootClass.addSuperInterface(f.Type().createReference(AutoCloseable.class));
         f.Method().create(rootClass, EnumSet.of(PUBLIC), f.Type().VOID_PRIMITIVE, "close",
                 emptyList(), Collections.emptySet(), closeBody);
