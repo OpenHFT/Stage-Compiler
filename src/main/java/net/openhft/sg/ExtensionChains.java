@@ -165,8 +165,6 @@ public final class ExtensionChains {
             add(mergeInto, methodToMerge, mergeInto::addMethod);
             return;
         }
-        if (methodToMerge.hasModifier(ABSTRACT))
-            return;
         
         Optional<CtMethod<?>> overridingMethod = mergeInto.getMethods().stream()
                 .filter(m -> MethodNode.overrides(m, methodToMerge)).findFirst();
@@ -174,12 +172,13 @@ public final class ExtensionChains {
             @SuppressWarnings("unchecked")
             CtMethod<T> overriding = (CtMethod<T>) overridingMethod.get();
             boolean shouldRemoveAnn = methodToMerge.getAnnotation(Override.class) == null;
-            if (!overriding.hasModifier(ABSTRACT))
+            if (!methodToMerge.hasModifier(ABSTRACT) && !overriding.hasModifier(ABSTRACT))
                 processOverridden(mergeInto, toMerge, methodToMerge);
             if (shouldRemoveAnn)
                 removeAnnotation(overriding, Override.class);
         } else {
-            add(mergeInto, methodToMerge, mergeInto::addMethod);
+            if (!methodToMerge.hasModifier(ABSTRACT))
+                add(mergeInto, methodToMerge, mergeInto::addMethod);
         }
     }
 
