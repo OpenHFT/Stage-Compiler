@@ -150,26 +150,8 @@ public class CompilationNode {
             ctClass.getFields().forEach(f -> add(mergedClass, f, mergedClass::addField));
             ctClass.getConstructors()
                     .forEach((CtConstructor c) -> add(mergedClass, c, mergedClass::addConstructor));
-//            Set<? extends CtConstructor<?>> ctConstructors = ctClass.getConstructors();
-//            if (ctConstructors.size() > 1)
-//                throw sgce("More than 1 constructor in " + mergedClass);
-//            if (!ctConstructors.isEmpty()) {
-//                Set<? extends CtConstructor<?>> constructors = mergedClass.getConstructors();
-//                CtConstructor constructor;
-//                if (constructors.size() == 1) {
-//                    constructor = constructors.iterator().next();
-//                } else {
-//                    constructor = f.Constructor().create(
-//                            mergedClass, EnumSet.of(PUBLIC), new ArrayList<>(), emptySet());
-//                    constructor.setParent(mergedClass);
-//                    constructor.setBody((CtBlock)f.Core().createBlock());
-//                }
-//                CtConstructor<?> ctConstructor = ctConstructors.iterator().next();
-//                ctConstructor.getParameters().forEach(constructor::addParameter);
-//                CtBlock<?> constructorBody = constructor.getBody();
-//                CtBlock<?> ctConstructorBody = ((CtConstructor) ctConstructor).getBody();
-//                ctConstructorBody.getStatements().forEach(constructorBody::addStatement);
-//            }
+            if (ctClass.getSuperclass() != null)
+                mergedClass.setSuperclass(ctClass.getSuperclass());
 
             ctClass.getMethods().forEach(m -> add(mergedClass, m, mergedClass::addMethod));
         });
