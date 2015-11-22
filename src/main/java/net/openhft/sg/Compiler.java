@@ -8,6 +8,7 @@ import spoon.reflect.reference.CtExecutableReference;
 import spoon.reflect.reference.CtFieldReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtScanner;
+import spoon.reflect.visitor.Filter;
 
 import java.lang.annotation.Annotation;
 import java.util.*;
@@ -383,15 +384,42 @@ public class Compiler {
             CtExpression<?> defaultExpression = f.getDefaultExpression();
             if (defaultExpression == null)
                 return;
-            defaultExpression.getElements((CtFieldAccess<?> access) -> {
-                CtField<?> field = access.getVariable().getDeclaration();
-                List<CtField<?>> fieldDependants = dependants.get(field);
-                if (fieldDependants != null) {
-                    fieldDependants.add(f);
-                    dependencies.get(f).add(field);
+
+            Set<CtElement> scannedExecutables = new HashSet<>();
+            Queue<CtElement> executablesToScan = new ArrayDeque<>();
+
+            Filter<CtElement> addDependencies = (CtElement e) -> {
+                if (e instanceof CtFieldAccess) {
+                    CtFieldAccess<?> access = (CtFieldAccess<?>) e;
+                    CtField<?> field = access.getVariable().getDeclaration();
+                    List<CtField<?>> fieldDependants = dependants.get(field);
+                    if (fieldDependants != null) {
+                        fieldDependants.add(f);
+                        dependencies.get(f).add(field);
+                    }
+                } else if (e instanceof CtAbstractInvocation) {
+                    CtExecutable executable =
+                            ((CtAbstractInvocation) e).getExecutable().getDeclaration();
+                    if (executable != null && !scannedExecutables.contains(executable) &&
+                            executable.getParent() != null &&
+                            cxt.getCompilationNode((CtClass<?>) executable.getParent()) != null) {
+                        executablesToScan.add(executable);
+                    }
                 }
                 return false;
-            });
+            };
+
+            defaultExpression.getElements(addDependencies);
+            CtType<?> fieldClass = f.getType().getDeclaration();
+            if (fieldClass instanceof CtClass &&
+                    cxt.getCompilationNode((CtClass<?>) fieldClass) != null) {
+                fieldClass.getFields().forEach(field -> field.getElements(addDependencies));
+            }
+            CtElement executable;
+            while ((executable = executablesToScan.poll()) != null) {
+                scannedExecutables.add(executable);
+                executable.getElements(addDependencies);
+            }
         });
         Set<CtField<?>> visited = new HashSet<>();
         Deque<CtField<?>> sorted = new ArrayDeque<>();
