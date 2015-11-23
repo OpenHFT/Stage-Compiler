@@ -199,7 +199,7 @@ public class Compiler {
     }
 
     private boolean checkAccessedViaSegmentRefs(CtExpression<?> target) {
-        if (target == null)
+        if (target == null || target instanceof CtThisAccess)
             return true;
         if (target instanceof CtFieldAccess) {
             CtFieldAccess fieldAccess = (CtFieldAccess) target;
@@ -325,17 +325,10 @@ public class Compiler {
                     cxt.getCompilationNode(classWhereAccessFound);
             CompilationNode referencedNode =
                     cxt.getCompilationNode(cxt.getReferencedClass(field));
-            CtElement parent = stageRefAccess.getParent();
             CtExpression<?> access = referencingNode.access(referencedNode,
                     stageRefAccess instanceof CtFieldRead ? AccessType.Read :
                             AccessType.Write);
-            if (access == null &&
-                    (!(parent instanceof CtTargetedExpression) ||
-                            stageRefAccess != ((CtTargetedExpression) parent).getTarget())) {
-                CtCodeSnippetExpression<Object> thi = root.f.Core().createCodeSnippetExpression();
-                thi.setValue("this");
-                access = thi;
-            }
+            assert access != null;
             stageRefAccess.replace(access);
         });
     }

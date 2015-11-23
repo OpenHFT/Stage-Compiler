@@ -3,6 +3,7 @@ package net.openhft.sg;
 import spoon.reflect.code.CtBlock;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtFieldAccess;
+import spoon.reflect.code.CtThisAccess;
 import spoon.reflect.declaration.*;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.reference.CtTypeReference;
@@ -37,8 +38,8 @@ public abstract class DependencyNode {
     
     public void addDependencyOrCheckSameAccess(DependencyNode dependency, CtExpression<?> target) {
         assert dependency != this;
-        List<CtField<?>> via =
-                target != null ? FieldAccessChains.accessToChain((CtFieldAccess<?>) target) : emptyList();
+        List<CtField<?>> via = target != null && !(target instanceof CtThisAccess) ?
+                FieldAccessChains.accessToChain((CtFieldAccess<?>) target) : emptyList();
         List<CtField<?>> alreadyVia = dependency.dependantsVia.putIfAbsent(this, via);
         if (alreadyVia == null) {
             dependenciesVia.put(dependency, via);
