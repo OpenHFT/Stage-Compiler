@@ -574,14 +574,12 @@ public class Compiler {
         Factory f = root.f;
         CtBlock<Void> closeBody = f.Core().createBlock();
         cxt.allNodes().forEach(n -> {
-            if (n.getDependencies().isEmpty()) {
-                n.getCloseMethod().ifPresent(closeMethod -> {
-                    CompilationNode refNode = cxt.getCompilationNode(n.declaringType);
-                    CtExpression<?> access = root.access(refNode, AccessType.Read);
-                    closeBody.addStatement(
-                            f.Code().createInvocation(access, closeMethod.getReference()));
-                });
-            }
+            n.getCloseMethod().ifPresent(closeMethod -> {
+                CompilationNode refNode = cxt.getCompilationNode(n.declaringType);
+                CtExpression<?> access = root.access(refNode, AccessType.Read);
+                closeBody.addStatement(
+                        f.Code().createInvocation(access, closeMethod.getReference()));
+            });
         });
         CtClass rootClass = root.classesToMerge.get(0);
         rootClass.addSuperInterface(f.Type().createReference(AutoCloseable.class));
