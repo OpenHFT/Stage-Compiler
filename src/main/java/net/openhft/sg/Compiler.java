@@ -560,8 +560,11 @@ public class Compiler {
                         if (declaringType != null)
                             ref.setDeclaringType(declaringType.getReference());
                         ref.setSimpleName(mergedClass.getSimpleName());
-                        if (node.eraseTypeParameters)
+                        if (node.eraseTypeParameters) {
                             ref.setActualTypeArguments(emptyList());
+                        } else if (!ref.getActualTypeArguments().isEmpty()){
+                            ref.setActualTypeArguments(mergedClass.getFormalTypeParameters());
+                        }
                         return;
                     }
                 }
