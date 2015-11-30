@@ -67,6 +67,8 @@ public class CompilationContext {
     private Map<CtMethod<?>, StageModel> accessMethodToStage = namedHashedMap();
     private Map<DependencyNode, Integer> nodeToOrder =
             new Object2ObjectOpenCustomHashMap<>(identityHashedEquivalence());
+    private Map<DependencyNode, CtClass<?>> dependencyNodeToAnyStagedClass =
+            new Object2ObjectOpenCustomHashMap<>(identityHashedEquivalence());
 
     private Map<CtClass<?>, CompilationNode> anyStagedClassToNode = namedHashedMap();
     
@@ -213,6 +215,14 @@ public class CompilationContext {
     
     public CompilationNode getNodeByAnyStagedClass(CtClass<?> ctClass) {
         return anyStagedClassToNode.get(ctClass);
-        
+    }
+
+    public void bindDependencyNodeToAnyStagedClass(DependencyNode node, CtClass<?> ctClass) {
+        if (dependencyNodeToAnyStagedClass.put(node, ctClass) != null)
+            throw new AssertionError();
+    }
+
+    public CtClass<?> getAnyStagedClassByDependencyNode(DependencyNode node) {
+        return dependencyNodeToAnyStagedClass.get(node);
     }
 }

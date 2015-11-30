@@ -165,7 +165,8 @@ public class Compiler {
         cxt.allNodes().forEach(node -> node.traverseBlocksForBuildingDeps((CtExpression<?> e) -> {
             if (e instanceof CtInvocation) {
                 CtInvocation<?> invocation = (CtInvocation<?>) e;
-                if (!checkAccessedViaSegmentRefs(invocation.getTarget()))
+                CtExpression<?> invocationTarget = invocation.getTarget();
+                if (!checkAccessedViaStageRefs(invocationTarget))
                     return;
                 CtExecutableReference<?> executableRef = invocation.getExecutable();
                 // if executableRef.getDeclaringType() == null, the declaring type is out of
@@ -175,18 +176,22 @@ public class Compiler {
                     if (executable instanceof CtMethod) {
                         CtMethod<?> method = (CtMethod<?>) executable;
                         MethodNode methodNode = cxt.getMethodNode(method);
+                        if (methodNode == null) {
+                            methodNode = referencedCompilationNode(node, invocationTarget)
+                                    .interfaceMethodToNode.get(method);
+                        }
                         if (methodNode != null && methodNode != node) {
-                            node.addDependencyOrCheckSameAccess(methodNode, invocation.getTarget());
+                            node.addDependencyOrCheckSameAccess(methodNode, invocationTarget);
                             return;
                         }
                         StageModel stage = cxt.getStageModelByStageMethod(method);
                         if (stage != null && stage != node)
-                            node.addDependencyOrCheckSameAccess(stage, invocation.getTarget());
+                            node.addDependencyOrCheckSameAccess(stage, invocationTarget);
                     }
                 }
             } else if (e instanceof CtFieldAccess) {
                 CtFieldAccess<?> fieldAccess = (CtFieldAccess<?>) e;
-                if (!checkAccessedViaSegmentRefs(fieldAccess.getTarget()))
+                if (!checkAccessedViaStageRefs(fieldAccess.getTarget()))
                     return;
                 CtField<?> field = fieldAccess.getVariable().getDeclaration();
                 if (field != null) {
@@ -198,14 +203,28 @@ public class Compiler {
         }));
     }
 
-    private boolean checkAccessedViaSegmentRefs(CtExpression<?> target) {
+    private CompilationNode referencedCompilationNode(
+            DependencyNode node, CtExpression<?> invocationTarget) {
+        CompilationNode referencedNode;
+        if (invocationTarget == null || invocationTarget instanceof CtThisAccess) {
+            CtClass<?> ctClass = cxt.getAnyStagedClassByDependencyNode(node);
+            referencedNode = cxt.getCompilationNode(ctClass);
+        } else {
+            CtField field = ((CtFieldAccess) invocationTarget)
+                    .getVariable().getDeclaration();
+            referencedNode = cxt.getCompilationNode(cxt.getReferencedClass(field));
+        }
+        return referencedNode;
+    }
+
+    private boolean checkAccessedViaStageRefs(CtExpression<?> target) {
         if (target == null || target instanceof CtThisAccess)
             return true;
         if (target instanceof CtFieldAccess) {
             CtFieldAccess fieldAccess = (CtFieldAccess) target;
             CtField field = fieldAccess.getVariable().getDeclaration();
             if (field != null && field.getAnnotation(StageRef.class) != null) {
-                return checkAccessedViaSegmentRefs(fieldAccess.getTarget());
+                return checkAccessedViaStageRefs(fieldAccess.getTarget());
             }
         }
         return false;

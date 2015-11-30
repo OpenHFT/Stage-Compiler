@@ -7,16 +7,19 @@ import spoon.reflect.code.CtThisAccess;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtField;
+import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.reference.CtTypeReference;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 
 import static java.lang.Math.min;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.joining;
+import static net.openhft.sg.CompilationContext.namedHashedMap;
 import static net.openhft.sg.ExtensionChains.add;
 import static net.openhft.sg.StageGraphCompilationException.sgce;
 import static spoon.reflect.declaration.ModifierKind.*;
@@ -38,6 +41,8 @@ public class CompilationNode {
     private List<CtField<?>> rootAccessPath;
     
     private CtClass<?> mergedClass;
+
+    Map<CtMethod<?>, MethodNode> interfaceMethodToNode = namedHashedMap();
     
     private CompilationNode(Factory f) {
         this.f = f;
@@ -125,6 +130,15 @@ public class CompilationNode {
             return access;
         } else {
             return thisAccess;
+        }
+    }
+
+    void bind(CtMethod<?> method, MethodNode node) {
+        if (interfaceMethodToNode.putIfAbsent(method, node) != null &&
+                interfaceMethodToNode.get(method) != node) {
+            throw new StageGraphCompilationException("compilation node already has node " +
+                    interfaceMethodToNode.get(method) + " bind to abstract method " + method +
+                    " in interface " + method.getDeclaringType() + "; attempt to bind to " + node);
         }
     }
     

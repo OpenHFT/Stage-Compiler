@@ -34,6 +34,7 @@ public abstract class DependencyNode {
         this.cxt = cxt;
         this.name = name;
         this.declaringType = declaringType;
+        cxt.bindDependencyNodeToAnyStagedClass(this, declaringType);
     }
     
     public void addDependencyOrCheckSameAccess(DependencyNode dependency, CtExpression<?> target) {
