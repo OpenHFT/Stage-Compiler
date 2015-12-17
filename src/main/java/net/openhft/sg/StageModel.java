@@ -28,6 +28,7 @@ public class StageModel extends DependencyNode {
     private final Set<CtField<?>> fieldsToGenerateAccessMethods = new HashSet<>();
     private CtMethod<Boolean> stageInitMethod;
     private CtField<?> initField;
+    private boolean manyFieldsInitialized = false;
     private List<CtMethod<Void>> initStageMethods = new ArrayList<>();
     private CtMethod<Void> noArgInitStageMethod;
     private Map<CtMethod<?>, CtMethod<?>> stageMethods = new LinkedHashMap<>();
@@ -87,13 +88,20 @@ public class StageModel extends DependencyNode {
                         throw sgce(name + " fields cannot span several class declarations");
                     fieldsFoundInThisClass = true;
                     fields.put(field, null);
-                    if (field.getDefaultExpression() != null && (
-                            stageInitMethod == null || stageInitMethod.hasModifier(ABSTRACT))) {
-                        if (initField != null) {
-                            throw sgce("At most one " + name +
-                                    " stage field could be initialized");
+                    if (field.getDefaultExpression() != null) {
+                        if (initField != null || manyFieldsInitialized) {
+                            if (stageInitMethod == null || stageInitMethod.hasModifier(ABSTRACT)) {
+                                throw sgce("At most one " + name +
+                                        " stage field could be initialized");
+                            } else {
+                                // If several fields are initialized and stageInit() method
+                                // is defined, there should be no distinguished init field
+                                initField = null;
+                                manyFieldsInitialized = true;
+                            }
+                        } else {
+                            initField = field;
                         }
-                        initField = field;
                     }
                     cxt.bind(field, this);
                     for (CtMethod<?> method : baseType.getMethods()) {
