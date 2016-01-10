@@ -9,17 +9,16 @@ import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.Filter;
 
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static java.util.Optional.of;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.concat;
+import static net.openhft.sg.Compiler.stagedClassExtensionChain;
+import static net.openhft.sg.SpoonUtils.clashes;
 import static net.openhft.sg.StageGraphCompilationException.sgce;
 import static net.openhft.sg.StringUtils.capitalize;
 import static net.openhft.sg.StringUtils.lowercase;
-import static net.openhft.sg.Compiler.stagedClassExtensionChain;
-import static net.openhft.sg.SpoonUtils.clashes;
 import static spoon.reflect.code.UnaryOperatorKind.NOT;
 import static spoon.reflect.declaration.ModifierKind.ABSTRACT;
 
@@ -313,22 +312,35 @@ public class StageModel extends DependencyNode {
         initStageMethods.forEach(initStageMethod -> {
             // rule 15
             CtBlock<Void> initStageMethodBody = initStageMethod.getBody();
-            insertCloseDependantsCall(initStageMethodBody::insertEnd);
+            getCloseDependantsMethod().ifPresent(m -> {
+                CtInvocation<Boolean> stageInit = f().Code().createInvocation(
+                        thisAccess(), getStageInitMethod().getReference());
+                CtLocalVariable<Boolean> wasStageInit = f().Code().createLocalVariable(
+                        f().Type().BOOLEAN_PRIMITIVE, "was" + name + "Init", stageInit);
+                initStageMethodBody.insertBegin(wasStageInit);
+
+                CtVariableRead<Boolean> wasStageInitRead = f().Core().createVariableRead();
+                wasStageInitRead.setVariable(wasStageInit.getReference());
+
+                CtIf ifInit = f().Core().createIf();
+                ifInit.setCondition(wasStageInitRead);
+                CtInvocation<Void> closeDependants =
+                        f().Code().createInvocation(thisAccess(), m.getReference());
+                ifInit.setThenStatement(closeDependants);
+
+                initStageMethodBody.insertEnd(ifInit);
+            });
         });
         
         CtMethod<Void> closeMethod = getCloseMethod().get();
         CtBlock<Void> closeMethodBody = closeMethod.getBody();
-        insertCloseDependantsCall(closeMethodBody::insertBegin);
+        getCloseDependantsMethod().ifPresent(m ->
+                closeMethodBody.insertBegin(
+                        f().Code().createInvocation(thisAccess(), m.getReference())));
         CtIf ctIf = createNotInitIf();
         ctIf.setThenStatement(f().Core().createReturn());
         closeMethodBody.insertBegin(ctIf);
         fieldsToGenerateAccessMethods.forEach(this::fieldAccess);
-    }
-
-    private void insertCloseDependantsCall(Consumer<CtInvocation<?>> insert) {
-        Optional<CtMethod<Void>> closeDependantsMethod = getCloseDependantsMethod();
-        closeDependantsMethod.ifPresent(m ->
-                insert.accept(f().Code().createInvocation(thisAccess(), m.getReference())));
     }
 
     @Override
