@@ -35,7 +35,7 @@ test {
 }
 
 group = 'net.openhft'
-version = '1.10'
+version = '1.11-SNAPSHOT'
 jar.baseName = 'stage-compiler'
 
 task sourcesJar(type: Jar, dependsOn: classes) {

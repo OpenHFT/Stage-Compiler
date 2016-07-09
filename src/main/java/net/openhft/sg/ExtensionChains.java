@@ -8,7 +8,6 @@ import spoon.reflect.visitor.CtScanner;
 import spoon.reflect.visitor.Filter;
 
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;

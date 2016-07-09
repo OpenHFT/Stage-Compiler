@@ -13,6 +13,7 @@ import spoon.reflect.visitor.Filter;
 import java.lang.annotation.Annotation;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
@@ -367,11 +368,8 @@ public class Compiler {
     }
 
     private void sortMembers() {
-        Set<DependencyNode> visited = new HashSet<>();
-        Deque<DependencyNode> sorted = new ArrayDeque<>();
-        cxt.allNodes().filter(n -> n.getDependencies().isEmpty())
-                .forEach(n -> n.visit(visited, sorted));
-        List<DependencyNode> sortedList = new ArrayList<>(sorted);
+        List<DependencyNode> sortedList =
+                topologicallySorted(cxt.allNodes().collect(Collectors.toList()));
         for (int i = 0; i < sortedList.size(); i++) {
             cxt.setNodeOrder(sortedList.get(i), i + 1);
         }
@@ -379,6 +377,16 @@ public class Compiler {
             m.setPosition(new LinedSourcePosition(m.getPosition(), cxt.getOrder(m)));
             return false;
         });
+    }
+
+    private <T extends DependencyNode> List<T> topologicallySorted(Collection<T> nodes) {
+        Set<DependencyNode> visited = new HashSet<>();
+        Deque<DependencyNode> sorted = new ArrayDeque<>();
+        nodes.stream().filter(n -> n.getDependencies().isEmpty())
+                .forEach(n -> n.visit(visited, sorted));
+        sorted.retainAll(nodes);
+        //noinspection unchecked
+        return new ArrayList<>((Collection<? extends T>) sorted);
     }
     
     private void sortFinals() {
@@ -595,13 +603,14 @@ public class Compiler {
     void generateGlobalClose() {
         Factory f = root.f;
         CtBlock<Void> closeBody = f.Core().createBlock();
-        cxt.allNodes().forEach(n -> {
-            n.getCloseMethod().ifPresent(closeMethod -> {
-                CompilationNode refNode = cxt.getCompilationNode(n.declaringType);
-                CtExpression<?> access = root.access(refNode, AccessType.Read);
-                closeBody.addStatement(
-                        f.Code().createInvocation(access, closeMethod.getReference()));
-            });
+        List<StageModel> stageModels =
+                topologicallySorted(cxt.allStageModels().collect(Collectors.toList()));
+        Collections.reverse(stageModels); // close dependant stages first
+        stageModels.forEach(stage -> {
+            CompilationNode refNode = cxt.getCompilationNode(stage.declaringType);
+            CtExpression<?> access = root.access(refNode, AccessType.Read);
+            closeBody.addStatement(
+                    f.Code().createInvocation(access, stage.getDoCloseMethod().getReference()));
         });
         CtClass rootClass = root.classesToMerge.get(0);
         rootClass.addSuperInterface(f.Type().createReference(AutoCloseable.class));

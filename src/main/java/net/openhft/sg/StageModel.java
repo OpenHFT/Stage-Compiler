@@ -31,7 +31,10 @@ public class StageModel extends DependencyNode {
     private List<CtMethod<Void>> initStageMethods = new ArrayList<>();
     private CtMethod<Void> noArgInitStageMethod;
     private Map<CtMethod<?>, CtMethod<?>> stageMethods = new LinkedHashMap<>();
+    private boolean closeMethodGenerated = false;
     private CtMethod<Void> closeMethod;
+    private List<CtStatement> closeMethodStatements;
+    private CtMethod<Void> doCloseMethod;
     
     public StageModel(CompilationContext cxt, CtField<?> oneField,
                       CtClass<?> declaringType) {
@@ -202,9 +205,12 @@ public class StageModel extends DependencyNode {
 
     @Override
     public Optional<CtMethod<Void>> getCloseMethod() {
-        if (closeMethod != null && !closeMethod.hasModifier(ABSTRACT))
+        if (closeMethod != null && !closeMethod.hasModifier(ABSTRACT)) {
+            initCloseMethodStatements();
             return of(closeMethod);
+        }
         assert initField != null;
+        closeMethodGenerated = true;
         
         if (closeMethod == null) {
             closeMethod = createSimpleMethod(f().Type().VOID_PRIMITIVE, closeMethodName());
@@ -215,7 +221,25 @@ public class StageModel extends DependencyNode {
         }
         
         closeMethod.getBody().addStatement(net.openhft.sg.SpoonUtils.reassignDefault(initField));
+        initCloseMethodStatements();
         return of(closeMethod);
+    }
+
+    private void initCloseMethodStatements() {
+        if (closeMethodStatements != null)
+            return;
+        closeMethodStatements = f().Core().clone(closeMethod.getBody()).getStatements();
+    }
+
+    public CtMethod<Void> getDoCloseMethod() {
+        if (doCloseMethod != null)
+            return doCloseMethod;
+        getCloseMethod(); // ensure closeMethodStatements list is init
+        doCloseMethod = createSimpleMethod(f().Type().VOID_PRIMITIVE, "doClose" + name);
+        for (CtStatement statement : closeMethodStatements) {
+            doCloseMethod.getBody().addStatement(statement);
+        }
+        return doCloseMethod;
     }
 
     public <T> CtTargetedExpression<T, CtExpression<?>> fieldAccess(
@@ -339,7 +363,19 @@ public class StageModel extends DependencyNode {
                         f().Code().createInvocation(thisAccess(), m.getReference())));
         CtIf ctIf = createNotInitIf();
         ctIf.setThenStatement(f().Core().createReturn());
-        closeMethodBody.insertBegin(ctIf);
+        if (!closeMethodGenerated || getCloseDependantsMethod().isPresent()) {
+            // If the close method is not generated (or have dependants), it might have (or call)
+            // non-trivial logic that throws exceptions when stage is not init, so we should insert
+            // if (!init) return; check. If the close method is generated, it's logic is just
+            // a single clearing assignment to the init field. So instead of first checking if this
+            // field is not clear it's easier (for "writer" and for CPU) to clear it straight away.
+            closeMethodBody.insertBegin(ctIf);
+        }
+        if (!closeMethodGenerated) {
+            // Same reasoning as above, but doCloseStage() don't close dependencies so no
+            // getCloseDependantsMethod().isPresent() check.
+            getDoCloseMethod().getBody().insertBegin(f().Core().clone(ctIf));
+        }
         fieldsToGenerateAccessMethods.forEach(this::fieldAccess);
     }
 
