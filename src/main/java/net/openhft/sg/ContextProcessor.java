@@ -13,10 +13,7 @@ import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import javax.tools.JavaFileObject;
@@ -91,8 +88,10 @@ public class ContextProcessor extends AbstractProcessor {
 
             try {
                 String mergedClassName = "Compiled" + cxtC.getSimpleName();
+                PackageElement pkg = processingEnv.getElementUtils().getPackageOf(cxtC);
                 JavaFileObject sourceFile =
-                        processingEnv.getFiler().createSourceFile(mergedClassName, cxtC);
+                        processingEnv.getFiler().createSourceFile(
+                                pkg.getQualifiedName() + "." + mergedClassName, cxtC);
                 if (Files.exists(Paths.get(sourceFile.toUri())))
                     return;
 
