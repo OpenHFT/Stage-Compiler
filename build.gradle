@@ -96,8 +96,8 @@ poms*.whenConfigured { pom ->
         }
         licenses {
             license {
-                name = 'The Apache Software License, Version 2.0'
-                url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                name = 'LGPLv3'
+                url = 'https://www.gnu.org/licenses/lgpl-3.0.txt'
                 distribution = 'repo'
             }
         }
