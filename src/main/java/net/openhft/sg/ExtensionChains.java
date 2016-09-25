@@ -20,14 +20,17 @@ package net.openhft.sg;
 import spoon.reflect.code.*;
 import spoon.reflect.declaration.*;
 import spoon.reflect.factory.Factory;
-import spoon.reflect.reference.*;
+import spoon.reflect.reference.CtActualTypeContainer;
+import spoon.reflect.reference.CtParameterReference;
+import spoon.reflect.reference.CtTypeParameterReference;
+import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtScanner;
 import spoon.reflect.visitor.Filter;
 
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.function.Consumer;
 
 import static java.util.Collections.reverse;
@@ -82,20 +85,20 @@ public final class ExtensionChains {
                 toMerge.accept(new CtScanner() {
 
                     @Override
-                    public void scan(CtReference ref) {
-                        if (ref instanceof CtGenericElementReference) {
-                            CtGenericElementReference gRef = (CtGenericElementReference) ref;
-                            replaceInList(ref.getFactory(), gRef.getActualTypeArguments());
-                        }
-                        if (ref instanceof CtTypeParameterReference) {
-                            replaceInList(ref.getFactory(),
-                                    ((CtTypeParameterReference) ref).getBounds());
-                        }
-                        super.scan(ref);
-                    }
-
-                    @Override
                     public void scan(CtElement element) {
+                        if (element instanceof CtActualTypeContainer) {
+                            CtActualTypeContainer ref = (CtActualTypeContainer) element;
+                            ArrayList<CtTypeReference<?>> typeArgs =
+                                    new ArrayList<>(ref.getActualTypeArguments());
+                            replaceInList(element.getFactory(), typeArgs);
+                            ref.setActualTypeArguments(typeArgs);
+                        }
+                        if (element instanceof CtTypeParameterReference) {
+                            CtTypeParameterReference ref = (CtTypeParameterReference) element;
+                            ArrayList<CtTypeReference<?>> bounds = new ArrayList<>(ref.getBounds());
+                            replaceInList(element.getFactory(), bounds);
+                            ref.setBounds(bounds);
+                        }
                         if (element instanceof CtTypedElement) {
                             CtTypedElement typed = (CtTypedElement) element;
                             CtTypeReference type = typed.getType();
@@ -105,8 +108,10 @@ public final class ExtensionChains {
                             }
                         }
                         if (element instanceof CtExpression) {
-                            replaceInList(element.getFactory(),
-                                    ((CtExpression) element).getTypeCasts());
+                            ArrayList<CtTypeReference<?>> typeCasts =
+                                    new ArrayList<>(((CtExpression) element).getTypeCasts());
+                            replaceInList(element.getFactory(), typeCasts);
+                            ((CtExpression) element).setTypeCasts(typeCasts);
                         }
                         super.scan(element);
                     }

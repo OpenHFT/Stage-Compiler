@@ -602,13 +602,17 @@ public class Compiler {
                         if (mergedPackage != null)
                             ref.setPackage(mergedPackage.getReference());
                         CtType<?> declaringType = mergedClass.getDeclaringType();
-                        if (declaringType != null)
-                            ref.setDeclaringType(declaringType.getReference());
+                        if (declaringType != null) {
+                            CtTypeReference<?> declaringTypeRef = declaringType.getReference();
+                            declaringTypeRef.setActualTypeArguments(
+                                    (List) declaringType.getFormalTypeParameters());
+                            ref.setDeclaringType(declaringTypeRef);
+                        }
                         ref.setSimpleName(mergedClass.getSimpleName());
                         if (node.eraseTypeParameters) {
                             ref.setActualTypeArguments(emptyList());
                         } else if (!ref.getActualTypeArguments().isEmpty()){
-                            ref.setActualTypeArguments(mergedClass.getFormalTypeParameters());
+                            ref.setActualTypeArguments((List) mergedClass.getFormalTypeParameters());
                         }
                         return;
                     }

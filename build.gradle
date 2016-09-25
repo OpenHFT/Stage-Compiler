@@ -21,10 +21,13 @@ apply plugin: 'signing'
 repositories {
 	mavenCentral()
 	mavenLocal()
+    maven {
+        url "http://spoon.gforge.inria.fr/repositories/releases"
+    }
 }
 
 dependencies {
-	compile group: 'net.openhft', name: 'spoon-core', version: '4.4.1'
+	compile group: 'fr.inria.gforge.spoon', name: 'spoon-core', version: '5.2.0'
 	compile 'it.unimi.dsi:fastutil:7.0.6'
 	compile files("${System.properties['java.home']}/../lib/tools.jar")
 	testCompile group: 'junit', name: 'junit', version: '4.+'

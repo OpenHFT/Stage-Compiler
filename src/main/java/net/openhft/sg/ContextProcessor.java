@@ -204,14 +204,11 @@ public class ContextProcessor extends AbstractProcessor {
         @Override
         public <T> void visitCtThisAccess(CtThisAccess<T> thisAccess) {
             enterCtExpression(thisAccess);
-            if (thisAccess.getTarget() != null && thisAccess.isImplicit()) {
-                throw new RuntimeException("inconsistent this definition");
-            }
-            if (thisAccess.getType().getDeclaration() != currentThis.peek()) {
-                visitCtTypeReferenceWithoutGenerics(thisAccess.getType());
-                write(".");
-            }
             if (!thisAccess.isImplicit()) {
+                if (thisAccess.getType().getDeclaration() != currentThis.peek()) {
+                    visitCtTypeReferenceWithoutGenerics(thisAccess.getType());
+                    write(".");
+                }
                 write("this");
             }
             exitCtExpression(thisAccess);
