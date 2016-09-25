@@ -19,9 +19,9 @@ package net.openhft.sg;
 
 import spoon.reflect.code.CtBlock;
 import spoon.reflect.code.CtExpression;
-import spoon.reflect.code.CtFieldAccess;
-import spoon.reflect.code.CtThisAccess;
-import spoon.reflect.declaration.*;
+import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.Filter;
@@ -32,14 +32,13 @@ import java.util.function.Consumer;
 import static java.util.Collections.*;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
-import static net.openhft.sg.StageGraphCompilationException.sgce;
 import static spoon.reflect.declaration.ModifierKind.PUBLIC;
 
 public abstract class DependencyNode {
 
     protected final CompilationContext cxt;
-    private final Map<DependencyNode, List<CtField<?>>> dependenciesVia = new HashMap<>();
-    private final Map<DependencyNode, List<CtField<?>>> dependantsVia = new HashMap<>();
+    private final Set<DependencyNode> dependenciesVia = new HashSet<>();
+    private final Set<DependencyNode> dependantsVia = new HashSet<>();
     private CtMethod<Void> closeDependantsMethod;
     
     protected final String name;
@@ -56,34 +55,26 @@ public abstract class DependencyNode {
     
     public void addDependencyOrCheckSameAccess(DependencyNode dependency, CtExpression<?> target) {
         assert dependency != this;
-        List<CtField<?>> via = target != null && !(target instanceof CtThisAccess) ?
-                FieldAccessChains.accessToChain((CtFieldAccess<?>) target) : emptyList();
-        List<CtField<?>> alreadyVia = dependency.dependantsVia.putIfAbsent(this, via);
-        if (alreadyVia == null) {
-            dependenciesVia.put(dependency, via);
-        } else if (!via.equals(alreadyVia)) {
-            throw sgce(dependency + " should be accessed from " + this +
-                    " via the same field access path " + alreadyVia +
-                    ", attempted to access via " + via);
-        }
+        if (dependency.dependantsVia.add(this))
+            dependenciesVia.add(dependency);
     }
     
     public Collection<DependencyNode> getDependencies() {
-        return unmodifiableCollection(dependenciesVia.keySet());
+        return unmodifiableCollection(dependenciesVia);
     }
     
     public Collection<DependencyNode> getDependants() {
-        return unmodifiableCollection(dependantsVia.keySet());
+        return unmodifiableCollection(dependantsVia);
     }
 
     /**
      * Directly or indirectly
      */
     public boolean dependsOn(DependencyNode dependency) {
-        boolean dependsDirectly = dependenciesVia.containsKey(dependency);
+        boolean dependsDirectly = dependenciesVia.contains(dependency);
         if (dependsDirectly)
             return true;
-        for (DependencyNode reqDependency : dependency.dependantsVia.keySet()) {
+        for (DependencyNode reqDependency : dependency.dependantsVia) {
             if (dependsOn(reqDependency))
                 return true;
         }
@@ -119,7 +110,7 @@ public abstract class DependencyNode {
             return of(closeDependantsMethod);
         if (dependantsVia.isEmpty())
             return empty();
-        if (!dependantsVia.keySet().stream()
+        if (!dependantsVia.stream()
                 .map(DependencyNode::getCloseMethod)
                 .anyMatch(Optional::isPresent)) {
             return empty();
@@ -145,7 +136,7 @@ public abstract class DependencyNode {
         Set<DependencyNode> visited = new HashSet<>();
         Deque<DependencyNode> sorted = new ArrayDeque<>();
         visit(visited, sorted);
-        sorted.retainAll(dependantsVia.keySet());
+        sorted.retainAll(dependantsVia);
         return new ArrayList<>(sorted);
     }
     
