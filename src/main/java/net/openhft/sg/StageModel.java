@@ -95,6 +95,7 @@ public class StageModel extends DependencyNode {
                         getStageName(method).equals(name)) {
                     stageMethods.put(method, null);
                     cxt.bindStageMethod(method, this);
+                    // todo bind overridden methods from superinterfaces
                 }
             }
             

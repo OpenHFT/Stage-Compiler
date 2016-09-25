@@ -21,7 +21,6 @@ import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtType;
-import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.Filter;
 
 import java.util.ArrayList;
@@ -30,17 +29,26 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
-import static net.openhft.sg.StringUtils.capitalize;
 import static net.openhft.sg.Compiler.stagedClassExtensionChain;
+import static net.openhft.sg.StringUtils.capitalize;
 
 public class MethodNode extends DependencyNode {
 
     private List<CtMethod<?>> methods = new ArrayList<>();
 
-    public MethodNode(net.openhft.sg.CompilationContext cxt, CtMethod<?> method, CtClass<?> declaringType) {
+    public MethodNode(CompilationContext cxt, CtMethod<?> method, CtClass<?> declaringType) {
         super(cxt, capitalize(declaringType.getSimpleName()) + capitalize(method.getSimpleName()),
                 declaringType);
-        stagedClassExtensionChain(declaringType).forEach(baseType ->
+        Stream.concat(stagedClassExtensionChain(declaringType).stream(),
+                declaringType.getSuperInterfaces().stream()
+                        .flatMap(i -> Stream.concat(Stream.of(i), i.getSuperInterfaces().stream()))
+                        .flatMap(i -> {
+                            CtType<?> declaration = i.getDeclaration();
+                            return declaration != null &&
+                                    declaration.getAnnotation(Staged.class) != null ?
+                                    Stream.of(declaration) : Stream.empty();
+                        }))
+                .forEach(baseType ->
                 baseType.getMethods().stream().filter(m -> overrides(method, m)).findAny()
                         .ifPresent(m -> {
             methods.add(m);
