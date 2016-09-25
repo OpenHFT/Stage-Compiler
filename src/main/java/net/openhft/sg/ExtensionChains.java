@@ -164,16 +164,6 @@ public final class ExtensionChains {
             }
         }
     }
-    
-    private static boolean checkOnlyDefaultConstructor(CtClass<?> ctClass) {
-        Set<? extends CtConstructor<?>> constructors = ctClass.getConstructors();
-        if (constructors.size() > 1)
-            return false;
-        if (constructors.isEmpty())
-            return true;
-        CtConstructor<?> constructor = constructors.iterator().next();
-        return constructor.isImplicit();
-    }
 
     private static  <T> void processMethod(CtClass<?> mergeInto, CtClass<?> toMerge,
                                            CtMethod<T> methodToMerge) {
