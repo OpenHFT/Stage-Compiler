@@ -180,7 +180,9 @@ public class CompilationNode {
             ctClass.getNestedTypes().forEach(t -> add(mergedClass, t, mergedClass::addNestedType));
             ctClass.getFields().forEach(f -> add(mergedClass, f, mergedClass::addField));
             ctClass.getConstructors()
-                    .forEach((CtConstructor c) -> add(mergedClass, c, mergedClass::addConstructor));
+                   .stream()
+                   .filter(c -> !c.isImplicit())
+                   .forEach((CtConstructor c) -> add(mergedClass, c, mergedClass::addConstructor));
             if (ctClass.getSuperclass() != null)
                 mergedClass.setSuperclass(ctClass.getSuperclass());
 
