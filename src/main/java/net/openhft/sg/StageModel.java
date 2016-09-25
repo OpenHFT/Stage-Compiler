@@ -401,7 +401,9 @@ public class StageModel extends DependencyNode {
     public <E extends CtElement> List<E> filterBlocksForBuildingDeps(Filter<E> filter) {
         Stream<CtMethod<?>> depsBuildingMethods =
                 concat(initStageMethods.stream(), stageMethods.keySet().stream());
-        depsBuildingMethods = concat(depsBuildingMethods, Stream.of(getCloseMethod().get()));
+        Stream<CtMethod<Void>> closeMethods =
+                Stream.of(getCloseMethod().get(), getDoCloseMethod());
+        depsBuildingMethods = concat(depsBuildingMethods, closeMethods);
         return depsBuildingMethods.flatMap(initMethod -> initMethod.getElements(filter).stream())
                 .collect(toList());
     }
