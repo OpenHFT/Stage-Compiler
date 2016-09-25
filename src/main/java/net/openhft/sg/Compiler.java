@@ -70,6 +70,7 @@ public class Compiler {
         checkFieldsAssignedOnlyWithinNodes();
         linkDependencyNodes();
         checkNoCyclicNodeDeps();
+        printNodeStats();
         guardFieldsAccess();
         guardStageMethodCalls();
         declareAndPrepareEverything();
@@ -633,5 +634,13 @@ public class Compiler {
         rootClass.addSuperInterface(f.Type().createReference(AutoCloseable.class));
         f.Method().create(rootClass, EnumSet.of(PUBLIC), f.Type().VOID_PRIMITIVE, "close",
                 emptyList(), Collections.emptySet(), closeBody);
+    }
+
+    private void printNodeStats() {
+        System.out.println("stage model count: " + cxt.allStageModels().count());
+        System.out.println("total node count: " + cxt.allNodes().count());
+        long totalDependencyCount =
+                cxt.allNodes().mapToInt(n -> n.getDependencies().size()).count();
+        System.out.println("total node dep count: " + totalDependencyCount);
     }
 }
